@@ -113,7 +113,14 @@ toLocalPath               :: Sync -> Path -> FilePath
 toLocalPath s (Path _ ps) = toLocalPath' s ps
 
 toLocalPath'      :: Sync -> SubPath -> FilePath
-toLocalPath' s sp =  localBaseDir s </> FP.concat (map fromText sp)
+toLocalPath' s sp =  localBaseDir s </> FP.concat (map fromText sp')
+  where
+    sp' = dropRBD (remoteBaseDir s) sp
+
+
+dropRBD     :: [Text] -> [Text] -> [Text]
+dropRBD rbd = map snd . dropWhile (\(a,b) -> a == b) . zip (rbd ++ repeat "")
+
 
 -- |TODO Switch to the FilePath package
 -- | given a local file path, create a (remote) Path corresponding to it
@@ -158,7 +165,7 @@ instance FromJSON SyncConfig where
             , password'      = hp
             , remoteBaseDir' = if T.null rbd
                                then []
-                               else T.split (== '/') rbd
+                               else filter (not . T.null) $ T.split (== '/') rbd
             , clientIdent'   = ci
             , ignorePath'    = FP.decode iPath
             , statePath'     = (\p -> FP.decode $ p <> "/") <$> mStatePath
