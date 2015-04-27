@@ -1,3 +1,11 @@
+*~
+*.hi
+*.o
+*.sqlite3
+.hsenv*
+*.cabal-sandbox*
+*cabal.sandbox.config
+*#*#
 dist/
 src/Creds.hs
 state/

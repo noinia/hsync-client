@@ -1,7 +1,7 @@
 HSync
 =====
 
-[![Build Status](https://travis-ci.org/noinia/hsync-common.svg?branch=master)](https://travis-ci.org/noinia/hsync-common)
+[![Build Status](https://travis-ci.org/noinia/hsync-client.svg?branch=master)](https://travis-ci.org/noinia/hsync-client)
 
 
 A 2 way file synchronization tool like dropbox.
