@@ -10,17 +10,8 @@ import qualified Yesod.Client as YC
 
 --------------------------------------------------------------------------------
 
-data Settings = Settings { _duchies :: [DuchyConfig]
-                         }
-                deriving (Show,Eq)
-makeLenses ''Settings
-
-data HSyncConfig = HSyncConfig { _clientName :: ClientName
-                               }
-                   deriving (Show,Eq)
-makeLenses ''HSyncConfig
-
-
+-- | A sync is a data type that represents the part of our application that connects
+-- to a server, and keeps a single directory tree in sync with a remote server.
 data Sync = Sync { _hsyncConfig :: HSyncConfig
                  , _config      :: SyncConfig
                  , _manager     :: Manager
@@ -34,17 +25,20 @@ instance HasDuchyConfig Sync where
   duchyConfig = config.duchy
 
 
-type Action = ActionT Sync (ResourceT IO)
-
-
-data HSyncClient = HSyncClient { _settings :: Settings
-                               -- , _acids    :: AcidState
-                               }
-makeLenses ''HSyncClient
-
-
 instance YC.IsYesodClient Sync where
   type API Sync = HSyncAPI
   serverAppRoot = (^.serverRoot)
   manager       = (^.manager)
   api           = const HSyncAPI
+
+
+
+type Action = ActionT Sync (ResourceT IO)
+
+
+
+-- | Data type to represent the entire Application
+data HSyncClient = HSyncClient { _settings :: Settings
+                               -- , _acids    :: AcidState
+                               }
+makeLenses ''HSyncClient

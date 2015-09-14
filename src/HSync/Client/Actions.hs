@@ -33,6 +33,7 @@ setSessionCreds :: Response body -> Action ()
 setSessionCreds = liftYT . updateCookieJar
 
 
+
 bodyOf resp = lift $ responseBody resp C.$$+- sinkLazy
 
 
@@ -89,12 +90,37 @@ storeDirectory p = do
     sync <- get
     resp <- runPostRoute (CreateDirR (sync^.hsyncConfig.clientName) (sync^.realm) p)
                          mempty
+    extractNotification resp
+
+    -- case eitherDecode body of
+    --   Right (Right n) -> print (n :: Notification)
+    --   Right (Left e)  -> print (e :: Text)
+    --   Left  e         -> print e
+
+
+storeFile       :: Signature -- ^ Signature of the file currently on the server
+                             -- with this path
+                -> Path -> Action ()
+storeFile sig p = do
+    sync <- get
+    case asLocalPath (sync^.config) p of
+      Nothing -> error "TODO: throw some exception or so"
+      Just fp -> do
+        resp <- runPostRoute (StoreFileR (sync^.hsyncConfig.clientName)
+                                         (sync^.realm) sig p)
+                             (sourceFile fp)
+        extractNotification resp
+
+delete     :: FileKind -> Path -> Action ()
+delete fk p = do
+    sync <- get
+    resp <- runDeleteRoute $ DeleteR (sync^.hsyncConfig.clientName) (sync^.realm) fk p
+    extractNotification resp
+
+
+extractNotification resp = do
     body <- bodyOf resp
     case eitherDecode body of
       Right (Right n) -> print (n :: Notification)
       Right (Left e)  -> print (e :: Text)
       Left  e         -> print e
-
-storeFile = error "not implemented yet"
-
-delete = error "not implemented yet"
