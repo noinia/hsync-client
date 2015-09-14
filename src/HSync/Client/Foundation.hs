@@ -15,9 +15,15 @@ data Settings = Settings { _duchies :: [DuchyConfig]
                 deriving (Show,Eq)
 makeLenses ''Settings
 
-data Sync = Sync { _config     :: SyncConfig
-                 , _manager    :: Manager
-                 , _clientName :: ClientName
+data HSyncConfig = HSyncConfig { _clientName :: ClientName
+                               }
+                   deriving (Show,Eq)
+makeLenses ''HSyncConfig
+
+
+data Sync = Sync { _hsyncConfig :: HSyncConfig
+                 , _config      :: SyncConfig
+                 , _manager     :: Manager
                  }
 makeLenses ''Sync
 

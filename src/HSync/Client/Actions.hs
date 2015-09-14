@@ -2,12 +2,16 @@ module HSync.Client.Actions where
 
 import System.Directory
 import Control.Lens hiding ((<.>))
-import Yesod.Client
 import HSync.Client.Import
 import HSync.Common.Header
-
 import Data.Aeson
+import Data.Aeson.Types(parseEither)
+import Data.Aeson.Parser(value')
+
 import qualified Data.Conduit as C
+
+
+
 
 login :: Action Bool
 login = do
@@ -16,13 +20,21 @@ login = do
                                             . addHeader' HPassword (sync^.password)
                                             . setMethod methodPost
                                             )
-    body <- lift $ responseBody resp C.$$+- sinkLazy
-    case decode body of
-      Just True -> pure True
-      _         -> pure False
+    body <- bodyOf resp
+    case body of
+      "true"  -> do setSessionCreds resp
+                    pure True
+      _       -> pure False -- TODO: Print what went wrong
   where
     addHeader' h v r = r { requestHeaders = asHeader h v : requestHeaders r }
     setMethod    m r = r { method = m }
+
+setSessionCreds :: Response body -> Action ()
+setSessionCreds = liftYT . updateCookieJar
+
+
+bodyOf resp = lift $ responseBody resp C.$$+- sinkLazy
+
 
 
 listenNow = error "not implemented yet"
@@ -65,12 +77,23 @@ getFile' s p fp = do
 --   toLocalPath p >>= (\fp -> liftIO $ setFileTimes (encodeString fp) t t )
 
 
-
+downloadCurrent :: Path -> Action ()
 downloadCurrent = error "not implemented yet"
+
+
 
 downloadVersion = error "not implemented yet"
 
-storeDirectory = error "not implemented yet"
+storeDirectory   :: Path -> Action ()
+storeDirectory p = do
+    sync <- get
+    resp <- runPostRoute (CreateDirR (sync^.hsyncConfig.clientName) (sync^.realm) p)
+                         mempty
+    body <- bodyOf resp
+    case eitherDecode body of
+      Right (Right n) -> print (n :: Notification)
+      Right (Left e)  -> print (e :: Text)
+      Left  e         -> print e
 
 storeFile = error "not implemented yet"
 

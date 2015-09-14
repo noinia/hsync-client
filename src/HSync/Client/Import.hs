@@ -8,8 +8,6 @@ import HSync.Client.Foundation               as Import
 import HSync.Client.ActionT                  as Import
 import HSync.Client.Types                    as Import
 import HSync.Client.Settings                 as Import
-
-
 import Control.Monad.State.Class             as Import
 
 -- import HSync.Server.Model                 as Import
