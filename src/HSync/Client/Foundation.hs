@@ -15,6 +15,7 @@ import qualified Yesod.Client as YC
 data Sync = Sync { _hsyncConfig :: HSyncConfig
                  , _config      :: SyncConfig
                  , _manager     :: Manager
+                    -- Add some task priority queue
                  }
 makeLenses ''Sync
 

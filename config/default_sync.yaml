@@ -1,7 +1,7 @@
 localBaseDir: "/path/to/a/local/directory"
-server: "http://localhost:3000"
+server: "http://localhost:3000/api"
 username: "joe"
 password: "secret"
+realm: 0
 remoteBaseDir: ""
-clientIdent: "client-ident"
 ignore: "config/ignore"

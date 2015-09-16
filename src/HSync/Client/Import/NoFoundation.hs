@@ -10,6 +10,7 @@ import HSync.Common.Types                    as Import
 import HSync.Common.Notification             as Import
 import HSync.Common.FileVersion              as Import
 import HSync.Common.AcidState                as Import
+import HSync.Common.Realm                    as Import
 import HSync.Common.AccessPolicy             as Import
 import HSync.Common.DateTime                 as Import
 import HSync.Common.API                      as Import
