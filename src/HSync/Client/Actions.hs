@@ -43,7 +43,20 @@ listenNow = error "not implemented yet"
 
 listenFrom = error "not implemented yet"
 
-getCurrentRealm = error "not implemented yet"
+type FileTree = StorageTree FileName LastModificationTime FileVersion
+
+
+getCurrentRealm   :: Path -> Action FileTree
+getCurrentRealm p = do
+    sync <- get
+    resp <- runGetRoute $ CurrentRealmR (sync^.realm) p
+    body <- bodyOf resp
+    case eitherDecode body of
+      Right t -> pure t
+      Left  e -> print e           >> error "error"
+
+
+
 
 getFile     :: Signature -> Path -> Action ()
 getFile s p = toLocalPath p >>= getFile' s p
