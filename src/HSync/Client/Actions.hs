@@ -7,9 +7,10 @@ import HSync.Common.Header
 import Data.Aeson
 import Data.Aeson.Types(parseEither)
 import Data.Aeson.Parser(value')
-
-import qualified Data.Conduit as C
-
+import Data.Conduit.Attoparsec(sinkParser, conduitParser)
+import qualified Data.Attoparsec.Types      as AP
+import qualified Data.Conduit               as C
+import qualified Data.Conduit.List          as CL
 
 
 
@@ -32,18 +33,50 @@ login = do
 setSessionCreds :: Response body -> Action ()
 setSessionCreds = liftYT . updateCookieJar
 
+bodyOf      :: LazySequence b a
+            => Response (ResumableSource (ResourceT IO) a) -> Action b
+bodyOf resp = lift $ responseBody resp $$+- sinkLazy
 
 
-bodyOf resp = lift $ responseBody resp C.$$+- sinkLazy
+listenNow  :: Path -> Action (ResumableSource (ResourceT IO) PublicNotification)
+listenNow p = do
+    sync <- get
+    listenFromWith (ListenNowR (sync^.realm) p) (not . isMyAction sync)
+
+listenFrom      :: DateTime -> Path
+                -> Action (ResumableSource (ResourceT IO) PublicNotification)
+listenFrom dt p = do
+    sync <- get
+    listenFromWith (ListenR dt (sync^.realm) p) (not . isMyAction sync)
 
 
+isMyAction        :: Sync -> PublicNotification -> Bool
+isMyAction sync n =   n^.event.newVersion.lastModified.modClient
+                   /= Just (sync^.hsyncConfig.clientName)
 
-listenNow = error "not implemented yet"
+listenFromWith            :: Route HSyncAPI -> (PublicNotification -> Bool)
+                          -> Action (ResumableSource (ResourceT IO) PublicNotification)
+listenFromWith route p = toJSONSource . responseBody <$> runGetRoute route
+  where
+    toJSONSource rs = rs $=+ (jsonConduit =$= CL.filter p)
 
 
-listenFrom = error "not implemented yet"
+-- | Transform the incoming bytestring stream representing a's in the form of
+-- JSON into actual a's
+jsonConduit :: (MonadThrow m, FromJSON a) => Conduit ByteString m a
+jsonConduit = conduitParser jsonParser =$= CL.map snd
 
-type FileTree = StorageTree FileName LastModificationTime FileVersion
+-- | An Attoparsec parser that attempts to parse the incoming bytestring in
+-- JSON format.
+jsonParser :: FromJSON a => AP.Parser ByteString a
+jsonParser = value' >>= \v -> case fromJSON v of
+                               Error s   -> fail s
+                               Success x -> return x
+             -- Note: we are using the json value parser here, since we want to
+             --       be able to parse 'null' values (in case of Maybe ).
+
+
+type FileTree = StorageTree FileName LastModificationTime (FileVersion (Maybe ClientName))
 
 
 getCurrentRealm   :: Path -> Action FileTree
@@ -75,7 +108,7 @@ getFile' s p fp = do
     -- Download the file into a partial file
     let fpPartial = fp <.> partialFileExtension
     -- debugM "Actions.getFile" $ "Downloading into " <> show lpPartial
-    lift $ responseBody resp C.$$+- sinkFile fpPartial
+    lift $ responseBody resp $$+- sinkFile fpPartial
     -- debugM "Actions.getFile" $ "Download complete."
     -- debugM "Actions.getFile" "Moving partial file to actual path."
     liftIO $ renameFile fpPartial fp
@@ -91,12 +124,17 @@ getFile' s p fp = do
 --   toLocalPath p >>= (\fp -> liftIO $ setFileTimes (encodeString fp) t t )
 
 
-downloadCurrent :: Path -> Action ()
-downloadCurrent = error "not implemented yet"
+downloadCurrent   :: Path -> Action ()
+downloadCurrent p = do
+    sync <- get
+    resp <- runGetRoute $ DownloadCurrentR (sync^.realm) p
+    error "not impl. yet"
 
 
-
-downloadVersion = error "not implemented yet"
+downloadVersion               :: FileKind -> Path -> Action ()
+downloadVersion NonExistent _ = pure ()
+downloadVersion Directory   _ = error "TODO"
+downloadVersion (File s)    p = getFile s p
 
 storeDirectory   :: Path -> Action ()
 storeDirectory p = do
@@ -104,12 +142,6 @@ storeDirectory p = do
     resp <- runPostRoute (CreateDirR (sync^.hsyncConfig.clientName) (sync^.realm) p)
                          mempty
     extractNotification resp
-
-    -- case eitherDecode body of
-    --   Right (Right n) -> print (n :: Notification)
-    --   Right (Left e)  -> print (e :: Text)
-    --   Left  e         -> print e
-
 
 storeFile       :: Signature -- ^ Signature of the file currently on the server
                              -- with this path
@@ -134,6 +166,6 @@ delete fk p = do
 extractNotification resp = do
     body <- bodyOf resp
     case eitherDecode body of
-      Right (Right n) -> print (n :: Notification)
+      Right (Right n) -> print (n :: PublicNotification)
       Right (Left e)  -> print (e :: Text)
       Left  e         -> print e
