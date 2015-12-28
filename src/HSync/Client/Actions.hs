@@ -4,6 +4,7 @@ import System.Directory
 import Control.Lens hiding ((<.>))
 import HSync.Client.Import
 import HSync.Common.Header
+import HSync.Common.Zip(writeArchive)
 import Data.Aeson
 import Data.Aeson.Types(parseEither)
 import Data.Aeson.Parser(value')
@@ -76,7 +77,7 @@ jsonParser = value' >>= \v -> case fromJSON v of
              --       be able to parse 'null' values (in case of Maybe ).
 
 
-type FileTree = StorageTree FileName LastModificationTime (FileVersion (Maybe ClientName))
+type FileTree = StorageTree FileName LastModificationTime (FileVersion ClientId)
 
 
 getCurrentRealm   :: Path -> Action FileTree
@@ -105,7 +106,15 @@ getFile'        :: Signature -> Path -> FilePath -> Action ()
 getFile' s p fp = do
     sync <- get
     resp <- runGetRoute $ FileR (sync^.realm) s p
-    -- Download the file into a partial file
+    getFile'' resp fp
+
+
+-- | Reads the actual file from the Response body, and saves it to disk
+-- getFile''        :: Response -> FilePath -> Action ()
+getFile''         ::  Response (ResumableSource (ResourceT IO) ByteString)
+                  -> FilePath -> Action ()
+getFile'' resp fp = do
+      -- Download the file into a partial file
     let fpPartial = fp <.> partialFileExtension
     -- debugM "Actions.getFile" $ "Downloading into " <> show lpPartial
     lift $ responseBody resp $$+- sinkFile fpPartial
@@ -113,6 +122,7 @@ getFile' s p fp = do
     -- debugM "Actions.getFile" "Moving partial file to actual path."
     liftIO $ renameFile fpPartial fp
     -- liftIO $ print "Should have renamed now "
+
 
 
 
@@ -128,7 +138,15 @@ downloadCurrent   :: Path -> Action ()
 downloadCurrent p = do
     sync <- get
     resp <- runGetRoute $ DownloadCurrentR (sync^.realm) p
-    error "not impl. yet"
+    case ( headerValue HFileKind $ responseHeaders resp
+         , asLocalPath (sync^.config) p ) of
+      (Just (File _), Just fp)  -> getFile'' resp fp
+      (Just Directory, Just fp) -> do
+                                     putStrLn "Unpacking dir"
+                                     lift $ responseBody resp $$+- writeArchive fp
+      (_, _)                    -> putStrLn "Error: No FileKind Header found"
+      (_, Nothing)              -> putStrLn "Unknown path"
+
 
 
 downloadVersion               :: FileKind -> Path -> Action ()
@@ -143,18 +161,21 @@ storeDirectory p = do
                          mempty
     extractNotification resp
 
-storeFile       :: Signature -- ^ Signature of the file currently on the server
-                             -- with this path
-                -> Path -> Action ()
-storeFile sig p = do
+storeFile      :: FileKind -- ^ Signature of the file currently on the server
+                           -- with this path
+               -> Path -> Action ()
+storeFile fk p = do
     sync <- get
     case asLocalPath (sync^.config) p of
       Nothing -> error "TODO: throw some exception or so"
       Just fp -> do
+        putStrLn "RUNNING Post"
         resp <- runPostRoute (StoreFileR (sync^.hsyncConfig.clientName)
-                                         (sync^.realm) sig p)
+                                         (sync^.realm) fk p)
                              (sourceFile fp)
+        putStrLn "extracting resp"
         extractNotification resp
+
 
 delete     :: FileKind -> Path -> Action ()
 delete fk p = do

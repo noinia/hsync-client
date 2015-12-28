@@ -92,8 +92,12 @@ asLocalPath s (Path p) = (FP.joinPath . (s^.localBaseDir :)) <$> strippedRBD
 
 
 asRemotePath      :: SyncConfig -> FilePath -> Maybe (RealmId,Path)
-asRemotePath s fp = (s^.realm,) . Path . map (FileName . T.pack) . FP.splitDirectories
-                 <$> stripPrefix (s^.localBaseDir) fp
+asRemotePath s fp = (s^.realm,) <$> asRemotePathWith (s^.localBaseDir) fp
+
+
+asRemotePathWith        :: FilePath -> FilePath -> Maybe Path
+asRemotePathWith lbd fp = Path . map (FileName . T.pack) . FP.splitDirectories
+                       <$> stripPrefix (FP.addTrailingPathSeparator lbd) fp
 
 --------------------------------------------------------------------------------
 -- * Global application settings
@@ -107,3 +111,13 @@ makeLenses ''Settings
 
 readConfig    :: FromJSON a => FilePath -> IO (Either String a)
 readConfig fp = either (Left . prettyPrintParseException) Right <$> decodeFileEither fp
+
+
+--------------------------------------------------------------------------------
+-- * Actions
+
+data Actions = ListenNow           Path
+             | ListenFrom DateTime Path
+             | DownloadCurrent Path
+             | Upload          Path
+               deriving (Show,Read,Eq)
