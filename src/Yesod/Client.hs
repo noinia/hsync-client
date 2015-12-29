@@ -243,8 +243,8 @@ runRouteWith   :: ( client `IsYesodClientFor` api
 runRouteWith r f = do
   mgr <- manager <$> clientInstance
   req <- f <$> toReq r
-  liftIO $ putStrLn "running req"
   lift $ http req mgr
+
 
 
 addRequestHeader         :: H.Header -> Request -> Request

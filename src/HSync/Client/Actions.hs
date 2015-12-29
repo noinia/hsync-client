@@ -161,6 +161,11 @@ storeDirectory p = do
                          mempty
     extractNotification resp
 
+
+
+
+
+
 storeFile      :: FileKind -- ^ Signature of the file currently on the server
                            -- with this path
                -> Path -> Action ()
@@ -168,13 +173,21 @@ storeFile fk p = do
     sync <- get
     case asLocalPath (sync^.config) p of
       Nothing -> error "TODO: throw some exception or so"
-      Just fp -> do
-        putStrLn "RUNNING Post"
-        resp <- runPostRoute (StoreFileR (sync^.hsyncConfig.clientName)
-                                         (sync^.realm) fk p)
-                             (sourceFile fp)
-        putStrLn "extracting resp"
-        extractNotification resp
+      Just fp -> storeFile' fk p fp
+
+-- | uploads the file pointed to by the FilePath to the remote Path (if the
+-- file currently residing at the remote path has the geiven FileKind)
+storeFile'         :: FileKind -> Path -> FilePath -> Action ()
+storeFile' fk p fp = do
+    sync <- get
+    putStrLn "RUNNING Post"
+    print fp
+    let s = sourceFile fp :: Source (ResourceT IO) ByteString
+    resp <- runPostRoute (StoreFileR (sync^.hsyncConfig.clientName)
+                                     (sync^.realm) fk p)
+                         s
+    putStrLn "extracting resp"
+    extractNotification resp
 
 
 delete     :: FileKind -> Path -> Action ()
