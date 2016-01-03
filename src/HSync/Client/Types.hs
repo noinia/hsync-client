@@ -24,7 +24,8 @@ type IgnoredPatterns = Set GlobPattern
 -- * The setting types for a single Sync
 
 -- | The Part of the remote Realm that we are interested in
-data DuchyConfig = DuchyConfig { _serverRoot :: URL
+data DuchyConfig = DuchyConfig { _duchyName  :: String
+                               , _serverRoot :: URL
                                , _username   :: UserName
                                , _password   :: Password
                                , _realm      :: RealmId
@@ -40,7 +41,8 @@ parsePath = pure . Path  . map (FileName . T.pack . FP.dropTrailingPathSeparator
 
 
 instance FromJSON DuchyConfig where
-  parseJSON (Object v) = DuchyConfig <$>  v .:  "server"
+  parseJSON (Object v) = DuchyConfig <$>  v .:  "name"
+                                     <*>  v .:  "server"
                                      <*>  v .:  "username"
                                      <*>  v .:  "password"
                                      <*>  v .:  "realm"
@@ -78,7 +80,7 @@ instance FromJSON HSyncConfig where
   parseJSON _          = mzero
 
 
-
+type FileTree = StorageTree FileName LastModificationTime (FileVersion ClientId)
 
 ----------------------------------------
 -- ** Functions on Duchy's
@@ -104,7 +106,7 @@ asRemotePathWith lbd fp = Path . map (FileName . T.pack) . FP.splitDirectories
 
 
 -- | Settings for the global application.
-data Settings = Settings { _duchies :: [DuchyConfig]
+data Settings = Settings { _duchies  :: [DuchyConfig]
                          }
                 deriving (Show,Eq)
 makeLenses ''Settings

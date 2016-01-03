@@ -25,18 +25,19 @@ library
     hs-source-dirs: src
 
     exposed-modules: Yesod.Client
-                     -- HSync.Client.AcidState
+                     HSync.Client.AcidState
                      HSync.Client.ActionT
                      HSync.Client.Actions
-                     HSync.Client.Download
                      HSync.Client.Import
                      HSync.Client.Import.NoFoundation
                      -- HSync.Client.Logger
                      HSync.Client.Foundation
-                     -- HSync.Client.ServerState
+                     HSync.Client.ServerState
                      HSync.Client.Settings
                      HSync.Client.Types
+
                      HSync.Client.Upload
+                     HSync.Client.Download
 
                      -- HSync.Client.LocalEvents
                      -- HSync.Client.RemoteEvents

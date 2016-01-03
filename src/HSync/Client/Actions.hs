@@ -52,8 +52,8 @@ listenFrom dt p = do
 
 
 isMyAction        :: Sync -> PublicNotification -> Bool
-isMyAction sync n =   n^.event.newVersion.lastModified.modClient
-                   /= Just (sync^.hsyncConfig.clientName)
+isMyAction sync n = Just (n^.event.newVersion.lastModified.modClient)
+                   /= (sync^.clientId)
 
 listenFromWith            :: Route HSyncAPI -> (PublicNotification -> Bool)
                           -> Action (ResumableSource (ResourceT IO) PublicNotification)
@@ -75,9 +75,6 @@ jsonParser = value' >>= \v -> case fromJSON v of
                                Success x -> return x
              -- Note: we are using the json value parser here, since we want to
              --       be able to parse 'null' values (in case of Maybe ).
-
-
-type FileTree = StorageTree FileName LastModificationTime (FileVersion ClientId)
 
 
 getCurrentRealm   :: Path -> Action FileTree
